@@ -8,7 +8,7 @@ Your solution should follow best practice, and be robust and scalable. We expect
 
 ## Dependencies
 - Python 3
-- sqlite3
+- SQLite
 - Flask (pip install flask)
 - SqlAlchemy (pip install sqlalchemy)
 
@@ -24,3 +24,11 @@ Your solution should follow best practice, and be robust and scalable. We expect
 - Create a 'live' database ('*python schema.py dblive*')
 - Run the 'live' version of the app ('*./runlive.sh*') in a separate command window
 - In a browser go to the link http://localhost:5000
+
+## Notes
+- This represents about 5-6 hours work over 3 days.
+- User authorisation not implemented; normally authentication/authorisation would be implemented not with a custom-built component but by integration with Facebook or Google identities, or a service such as Okta (https://www.okta.com/).
+- SQLite is not a database engine for production use; the SQLAlchemy ORM has been used to abstract the application from the database implementation so that a production quality DB could be substituted easily.
+- For expediency reasons, APIs have been created that are bound to the front end app rather than written for general use; this should be refactored prior to production use of this application.
+- Change notification between users not implemented; this would be implemented with a pub/sub framework, a messaging service such as AWS SQS, or a database that support pub/sub such as Redis.
+- Flask would normally be productionised with Gunicorn or by hosting the app on AWS or the Google App Engine.
