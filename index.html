@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+  <head>
+      <meta charset="utf-8" />
+      <title>dotfive test</title>
+      <link href="https://unpkg.com/gijgo@1.9.13/css/gijgo.min.css" rel="stylesheet" type="text/css" />
+      <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+      <script src="https://code.jquery.com/jquery-3.4.1.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
+      <script src="https://unpkg.com/gijgo@1.9.13/js/gijgo.min.js" type="text/javascript"></script>
+      <script src="https://getbootstrap.com/docs/4.0/dist/js/bootstrap.min.js" type="text/javascript"></script>
+      <style>
+      body {padding: 5px;}
+      button.btn-primary {margin-top: 0.5em }
+      button.close {margin: 0px; display: inline;}
+      .forms {max-width: 500px}
+      .forms form {margin-top: 1em}
+      .forms #category-form {display: none}
+      .forms #item-form {display: none}
+      .alert {margin-top: 1em; max-width: 500px}
+      #tree {margin-top: 1em}
+      </style>
+  </head>
+  <body>
+      <h3>Electrical goods demo</h3>
+      <div id="tree"></div>
+      <div class="forms">
+        <form id="selector-form">
+          <input type="hidden" id="selected-id" value=''/>
+          <button type="submit" class="btn btn-primary" id="add-category-btn">Add Category</button>
+          <button type="submit" class="btn btn-primary" id="add-item-btn">Add Item</button>
+        </form>
+        <form id="category-form">
+          <div class="form-row">
+            <label for="category-name">Add a new category</label>
+            <input type="text" name="category-name" id="category-name" class="form-control" />
+            <button type="submit" class="btn btn-primary">Submit</button>
+          </div>
+        </form>
+        <form id="item-form">
+          <div class="form-row">
+            <label for="item-name">Add a new item</label>
+            <input type="text" name="item-name" id="item-name" class="form-control" />
+            <button type="submit" class="btn btn-primary">Submit</button>
+          </div>
+        </form>
+      </div>
+      <div id="message-box"></div>
+      <script>
+          $('#selector-form input#selected-id').val('');
+          // Define message function
+          var doAlert = function (severity, message) {
+            $('div#message-box').html(
+              '<div class="alert alert-' +
+              severity +
+              '" role="alert"><span>' +
+              message +
+              '</span><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>'
+            );
+          };
+          // Build tree view
+          var tree = $('#tree').tree({
+            primaryKey: 'id',
+            uiLibrary: 'bootstrap4',
+            dataSource: '/categories',
+            dragAndDrop: true
+          });
+          // Hide forms when tree is clicked
+          tree.on('click', function () {
+            $('#item-form').hide();
+            $('#category-form').hide();
+          });
+          // Save the id of the selected element
+          tree.on('select', function (e, node, id) {
+            $('#selector-form input#selected-id').val(id);
+          });
+          tree.on('unselect', function (e, node, id) {
+            $('#selector-form input#selected-id').val('');
+          });
+          // Process a drag and drop
+          tree.on('nodeDrop', function (e, id, parentId, orderNumber) {
+            //doAlert('warning', 'dropped id=' + id + ', parent=' + parentId);
+            if (parentId.length < 5 || parentId.substring(0,3) != 'cat') {
+              doAlert('danger', 'Can only drop onto a category');
+              $('#selector-form input#selected-id').val('');
+              tree.reload();
+            }
+            else if (id.substring(0,3) == 'cat') {
+              $.ajax({
+                url: '/category',
+                method: 'PUT',
+                dataType: 'json',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                  parent: parentId,
+                  id: id
+                }),
+                success: function (result) {
+                  return;
+                },
+                error: function (result) {
+                  $('#selector-form input#selected-id').val('');
+                  tree.reload();
+                  doAlert('danger', 'Unable to move category');
+                }
+              });
+            }
+            else {
+              $.ajax({
+                url: '/item',
+                method: 'PUT',
+                dataType: 'json',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                  parent: parentId,
+                  id: id
+                }),
+                success: function (result) {
+                  return;
+                },
+                error: function (result) {
+                  $('#selector-form input#selected-id').val('');
+                  tree.reload();
+                  doAlert('danger', 'Unable to move item');
+                }
+              });
+            }
+          });
+          // Display a form to add an item or a category
+          $('#add-category-btn').on('click', function () {
+            var selectedId = $('#selector-form #selected-id').val();
+            if (selectedId != '' && selectedId.substring(0,3) != 'cat') {
+              doAlert('danger', 'Please select a category');
+              return false;
+            }
+            $('#item-form').hide();
+            $('#category-form').show();
+            return false;
+          });
+          $('#add-item-btn').on('click', function () {
+            var selectedId = $('#selector-form #selected-id').val();
+            if (selectedId == '' || selectedId.substring(0,3) != 'cat') {
+              doAlert('danger', 'Please select a category');
+              return false;
+            }
+            $('#category-form').hide();
+            $('#item-form').show();
+            return false;
+          });
+          // Add a category
+          $('#category-form button').on('click', function () {
+            var selectedId = $('#selector-form #selected-id').val();
+            var categoryName = $('#category-form #category-name').val();
+            if (categoryName == '') {
+              doAlert('danger', 'Please enter a category name');
+            }
+            else if (selectedId != '' && selectedId.substring(0,3) != 'cat') {
+              doAlert('danger', 'Please select a category');
+              return false;
+            }
+            else {
+              $.ajax({
+                url: '/category',
+                method: 'POST',
+                dataType: 'json',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                  parent: selectedId,
+                  name: categoryName
+                }),
+                success: function (result) {
+                  $('#category-form #category-name').val('');
+                  $('#item-form').hide();
+                  $('#category-form').hide();
+                  $('#selector-form input#selected-id').val('');
+                  tree.reload();
+                },
+                error: function (result) {
+                  doAlert('danger', 'Unable to add category');
+                }
+              });
+            }
+            return false;
+          });
+          // Add an item
+          $('#item-form button').on('click', function () {
+            var selectedId = $('#selector-form #selected-id').val();
+            var itemName = $('#item-form #item-name').val();
+            if (itemName == '') {
+              doAlert('danger', 'Please enter an item label');
+            }
+            else if (selectedId == '' || selectedId.substring(0,3) != 'cat') {
+              doAlert('danger', 'Please select a category');
+            }
+            else {
+              $.ajax({
+                url: '/item',
+                method: 'POST',
+                dataType: 'json',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                  parent: selectedId,
+                  name: itemName
+                }),
+                success: function (result) {
+                  $('#item-form #item-name').val('');
+                  $('#item-form').hide();
+                  $('#category-form').hide();
+                  $('#selector-form input#selected-id').val('');
+                  tree.reload();
+                },
+                error: function (result) {
+                  doAlert('danger', 'Unable to add item');
+                }
+              });
+            }
+            return false;
+          });
+      </script>
+  </body>
+</html>
